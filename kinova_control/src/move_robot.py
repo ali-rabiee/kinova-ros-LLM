@@ -75,12 +75,12 @@ if __name__ == '__main__':
     unpause_gazebo = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
     resp = unpause_gazebo()
 
-    if (nbJoints==6):
-      #home robots
-      moveJoint ([0.0,2.9,1.3,4.2,1.4,0.0],prefix,nbJoints)
-    else:
-      moveJoint ([0.0,2.9,0.0,1.3,4.2,1.4,0.0],prefix,nbJoints)
 
-    moveFingers ([1,1,1],prefix,nbfingers)
+    #home robots - Best configuration for home pose
+    moveJoint ([0.0, 2.6, 1.57, -1.57, 3.14, 1.57],prefix,nbJoints)
+      
+    #Fingers fully open for maximum object manipulation capability
+    moveFingers ([0.0, 0.0, 0.0],prefix,nbfingers)
+ 
   except rospy.ROSInterruptException:
     print("program interrupted before completion")

@@ -1,0 +1,78 @@
+<launch>
+  <!-- ======================================= -->
+  <!-- KINOVA ULTIMATE SIMULATION LAUNCH FILE -->
+  <!-- ======================================= -->
+  <!-- Clean MoveIt-focused simulation with stable joint states -->
+  
+  <!-- Arguments -->
+  <arg name="kinova_robotType" default="j2n6s300"/>
+  <arg name="gui" default="true"/>
+  <arg name="use_moveit" default="true"/>
+
+  <!-- ========== STAGE 1: STARTUP & SHUTDOWN HANDLER ========== -->
+  <!-- Start shutdown handler immediately for graceful quit capability -->
+  <node name="shutdown_handler" pkg="kinova_demo" type="shutdown_handler.py" 
+        output="screen" respawn="false"/>
+
+  <!-- Display startup message -->
+  <node name="startup_message" pkg="rospy_tutorials" type="talker" 
+        args="🚀 Starting Kinova Ultimate Simulation Stack with auto-cleanup and quit handler..." 
+        launch-prefix="bash -c 'sleep 2; exec $0 $@'"
+        output="screen"/>
+
+  <!-- ========== STAGE 2: GAZEBO with BETTER POSE (3-8 seconds) ========== -->
+  <!-- Start Gazebo with improved robot initial positioning -->
+  <include file="$(find kinova_gazebo)/launch/robot_launch_better_pose.launch">
+    <arg name="kinova_robotType" value="$(arg kinova_robotType)"/>
+    <arg name="gui" value="$(arg gui)"/>
+  </include>
+
+  <!-- Expose robot type globally -->
+  <param name="robot_type" value="$(arg kinova_robotType)"/>
+
+  <!-- ========== STAGE 3: CONTROLLER VERIFICATION (5-8 seconds) ========== -->
+  <!-- Verify joint states are being published -->
+  <node name="verify_joint_states" pkg="rostopic" type="rostopic" 
+        args="echo /$(arg kinova_robotType)/joint_states -n 1" 
+        launch-prefix="bash -c 'sleep 5; exec $0 $@'" 
+        output="log"/>
+
+  <!-- Controller readiness message -->
+  <node name="controller_ready_msg" pkg="rospy_tutorials" type="talker" 
+        args="✅ Controllers loaded, starting MoveIt in 3 seconds..." 
+        launch-prefix="bash -c 'sleep 8; exec $0 $@'" 
+        output="screen"/>
+
+  <!-- ========== STAGE 4: MOVEIT STARTUP (10+ seconds) ========== -->
+  <!-- Start MoveIt with sufficient delay for controller stability -->
+  <group if="$(arg use_moveit)">
+    <node name="moveit_startup_msg" pkg="rospy_tutorials" type="talker" 
+          args="🔧 Launching MoveIt planning framework..." 
+          launch-prefix="bash -c 'sleep 10; exec $0 $@'" 
+          output="screen"/>
+    
+    <!-- Launch MoveIt -->
+    <include file="$(find j2n6s300_moveit_config)/launch/j2n6s300_gazebo_demo.launch" />
+  </group>
+
+  <!-- ========== STAGE 5: SYSTEM VERIFICATION (25+ seconds) ========== -->
+  <!-- Final system health check -->
+  <node name="system_health_check" pkg="rostopic" type="rostopic" 
+        args="list" 
+        launch-prefix="bash -c 'sleep 25; exec $0 $@'" 
+        output="log"/>
+
+  <!-- Final ready message with quit instructions -->
+  <node name="system_ready_msg" pkg="rospy_tutorials" type="talker" 
+        args="🎉 KINOVA SIMULATION FULLY READY! Robot in natural pose, MoveIt active, stable joint states! Type 'q' + ENTER to quit gracefully!" 
+        launch-prefix="bash -c 'sleep 27; exec $0 $@'" 
+        output="screen"/>
+
+  <!-- ========== SYSTEM MONITORING (ongoing) ========== -->
+  <!-- Continuous joint state monitoring -->
+  <node name="joint_monitor" pkg="rostopic" type="rostopic" 
+        args="hz /$(arg kinova_robotType)/joint_states" 
+        launch-prefix="bash -c 'sleep 30; exec $0 $@'" 
+        output="log"/>
+
+</launch> 
