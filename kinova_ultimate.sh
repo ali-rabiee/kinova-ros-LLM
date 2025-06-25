@@ -1,12 +1,28 @@
 #!/bin/bash
 
 # =================================================================
-# 🚀 KINOVA ULTIMATE SIMULATION LAUNCHER
+# 🚀 KINOVA ULTIMATE SIMULATION LAUNCHER v2.0
 # =================================================================
 # One script to rule them all: Docker support, cleanup, launch!
-# Usage: 
+# 
+# FEATURES:
+#   🤖 Complete Kinova j2n6s300 simulation with MoveIt
+#   🎮 Advanced Pygame GUI with trajectory control
+#   🐳 Docker auto-detection and execution
+#   🧹 Automatic cleanup and process management
+#   🛡️  Graceful shutdown handling
+#
+# USAGE: 
 #   From host: ./kinova_ultimate.sh
 #   From Docker: ./kinova_ultimate.sh
+#   Headless: KINOVA_NO_GUI=1 ./kinova_ultimate.sh
+#
+# PYGAME GUI TELEOP:
+#   🎨 Modern gaming-style interface with visual feedback
+#   🎯 3 Control modes: Translation, Rotation, Gripper
+#   🌈 Color-coded modes for easy identification
+#   🖱️  Smooth trajectory-based motion control
+#   ⌨️  Keyboard shortcuts (SPACE, ESC) and mouse control
 # =================================================================
 
 set -e  # Exit on any error
@@ -34,7 +50,7 @@ echo -e "${BLUE}📊 Step 1: Environment Detection...${NC}"
 if [ -f /.dockerenv ]; then
     IN_DOCKER=true
     echo -e "${GREEN}✅ Running inside Docker container${NC}"
-    # Use the caller’s actual home (works for root *or* ali)
+    # Use the caller's actual home (works for root *or* ali)
     WORKSPACE_PATH="$HOME/catkin_ws/src/kinova-ros"
     # Fallback for legacy images that keep everything under /root
     [ -d "$WORKSPACE_PATH" ] || WORKSPACE_PATH="/root/catkin_ws/src/kinova-ros"
@@ -118,6 +134,17 @@ cleanup_processes() {
 
 launch_simulation() {
     echo -e "${BLUE}🚀 Step 4: Launching Kinova Simulation...${NC}"
+    
+    # Check if GUI teleop should be enabled
+    if [ -z "$KINOVA_NO_GUI" ]; then
+        ENABLE_GUI=true
+        echo -e "${GREEN}🎮 Pygame GUI Teleop: ENABLED${NC}"
+        echo -e "${GREEN}🎯 Using Advanced Pygame GUI with trajectory controllers${NC}"
+    else
+        ENABLE_GUI=false
+        echo -e "${YELLOW}🎮 GUI Teleop: DISABLED (KINOVA_NO_GUI set)${NC}"
+    fi
+    
     echo ""
     echo -e "${CYAN}================================================${NC}"
     echo -e "${CYAN}✅ ULTIMATE SIMULATION FEATURES:${NC}"
@@ -127,11 +154,25 @@ launch_simulation() {
     echo -e "${CYAN}   🧠 MoveIt motion planning${NC}"
     echo -e "${CYAN}   🔄 Stable joint state monitoring${NC}"
     echo -e "${CYAN}   🛡️  Graceful shutdown handler${NC}"
+    if $ENABLE_GUI; then
+        echo -e "${CYAN}   🎮 Advanced Pygame GUI with trajectory control${NC}"
+        echo -e "${CYAN}   🎯 3 Modes: Translation, Rotation, Gripper${NC}"
+        echo -e "${CYAN}   🎨 Color-coded interface with visual feedback${NC}"
+        echo -e "${CYAN}   🖱️  HOLD buttons for smooth continuous motion${NC}"
+    fi
     echo -e "${CYAN}================================================${NC}"
     echo ""
     echo -e "${YELLOW}🛑 QUIT OPTIONS (once running):${NC}"
     echo -e "${YELLOW}   💡 Type 'q' + ENTER for graceful shutdown${NC}"
     echo -e "${YELLOW}   💡 Alternative: Ctrl+C for emergency stop${NC}"
+    if $ENABLE_GUI; then
+        echo -e "${YELLOW}   💡 GUI: Click 'Switch Mode' or press SPACE to cycle modes${NC}"
+        echo -e "${YELLOW}   💡 Color-coded modes: Blue=Translation, Orange=Rotation, Green=Gripper${NC}"
+        echo -e "${YELLOW}   💡 HOLD buttons for continuous movement, release to stop${NC}"
+        echo -e "${YELLOW}   💡 Emergency stop button available, ESC to exit${NC}"
+    fi
+    echo ""
+    echo -e "${CYAN}💡 TIP: Use KINOVA_NO_GUI=1 to run without GUI (headless mode)${NC}"
     echo ""
     echo -e "${GREEN}🎯 Starting simulation in 3 seconds...${NC}"
     sleep 3
@@ -142,7 +183,33 @@ launch_simulation() {
         source ~/catkin_ws/devel/setup.bash
         
         echo '🚀 Launching ultimate simulation stack...'
-        roslaunch kinova_demo full_sim_stack_ultimate.launch
+        roslaunch kinova_demo full_sim_stack_ultimate.launch &
+        MAIN_PID=\$!
+        
+        # Wait for main simulation to initialize
+        echo '⏱️  Waiting for simulation to initialize...'
+        sleep 10
+        
+        if $ENABLE_GUI; then
+            export DISPLAY=:0  # Ensure GUI can display
+            
+            echo '🎮 Launching Advanced Pygame GUI Teleop...'
+            roslaunch kinova_demo gui_teleop_pygame.launch &
+            GUI_PID=\$!
+            echo '✅ Pygame GUI Teleop launched! Modern gaming-style interface'
+            echo 'ℹ️  Switch modes: Translation (Blue) → Rotation (Orange) → Gripper (Green)'
+            echo 'ℹ️  HOLD buttons for continuous motion, release to stop'
+            echo 'ℹ️  Emergency stop available, keyboard shortcuts (SPACE, ESC)'
+        fi
+        
+        # Wait for main process
+        wait \$MAIN_PID
+        
+        # Clean up GUI if it was launched
+        if $ENABLE_GUI && [ ! -z \"\$GUI_PID\" ]; then
+            echo '🧹 Shutting down GUI Teleop...'
+            kill \$GUI_PID 2>/dev/null || true
+        fi
     "
     
     if $IN_DOCKER; then

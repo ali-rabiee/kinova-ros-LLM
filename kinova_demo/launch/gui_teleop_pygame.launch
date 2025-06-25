@@ -1,0 +1,28 @@
+<launch>
+  <!-- Advanced Pygame GUI Teleop for Kinova Robot with Trajectory Controllers -->
+  
+  <!-- Launch the pygame GUI teleop node -->
+  <node name="kinova_pygame_teleop" pkg="kinova_demo" type="gui_teleop_pygame.py" 
+        output="screen" respawn="false">
+    
+    <!-- Topic remappings for trajectory controllers -->
+    <remap from="/j2n6s300/joint_states" to="/j2n6s300/joint_states"/>
+    <remap from="/j2n6s300/effort_joint_trajectory_controller/command" 
+           to="/j2n6s300/effort_joint_trajectory_controller/command"/>
+    <remap from="/j2n6s300/effort_finger_trajectory_controller/command" 
+           to="/j2n6s300/effort_finger_trajectory_controller/command"/>
+    
+    <!-- Control parameters optimized for trajectory controllers -->
+    <param name="linear_scale" value="0.1"/>
+    <param name="angular_scale" value="0.2"/>
+    <param name="gripper_scale" value="0.3"/>
+    <param name="publish_rate" value="10"/>
+    
+  </node>
+  
+  <node name="pygame_info" pkg="rospy_tutorials" type="talker" 
+        args="🎮 Pygame GUI Teleop ready! Trajectory-based control with visual feedback!" 
+        launch-prefix="bash -c 'sleep 2; exec $0 $@'" 
+        output="screen"/>
+        
+</launch> 
